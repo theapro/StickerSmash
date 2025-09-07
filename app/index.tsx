@@ -142,8 +142,8 @@ export default function HomeScreen() {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       uri: emoji,
       pan: new Animated.ValueXY({ x: 0, y: 0 }),
-      scale: new Animated.Value(1),
-      sizeMode: 1, // Start with medium size
+      scale: new Animated.Value(1.2),
+      sizeMode: 0,
     };
 
     setStickers((prev) => [...prev, newSticker]);
@@ -213,8 +213,7 @@ export default function HomeScreen() {
     };
 
     const onDoubleTap = () => {
-      // Cycle through sizes: 0.7 (small), 1.0 (medium), 1.5 (large)
-      const sizes = [0.7, 1.0, 1.5];
+      const sizes = [1.2, 1.5, 2.0];
       sticker.sizeMode = (sticker.sizeMode + 1) % sizes.length;
       const targetSize = sizes[sticker.sizeMode];
 
