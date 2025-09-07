@@ -1,5 +1,6 @@
-import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons"; // Make sure to install @expo/vector-icons if using icons
+import { Tabs } from "expo-router";
+import "../global.css";
 
 export default function Layout() {
   return (
