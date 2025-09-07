@@ -9,6 +9,8 @@ import {
   Platform,
   StyleSheet,
   View,
+  Text,
+  TouchableOpacity,
 } from "react-native";
 import {
   GestureHandlerRootView,
@@ -17,19 +19,66 @@ import {
   State,
 } from "react-native-gesture-handler";
 import { captureRef } from "react-native-view-shot";
+import { Ionicons } from "@expo/vector-icons";
 
-import Button from "../components/Button";
-import CircleButton from "../components/CircleButton";
-import EmojiPicker from "../components/EmojiPicker";
 import ImageViewer from "../components/ImageViewer";
+import EmojiPicker from "../components/EmojiPicker";
 
-// Types for better type safety
 interface StickerData {
   id: string;
   uri: string;
   pan: Animated.ValueXY;
   scale: Animated.Value;
 }
+
+// Modern Button Component
+const ModernButton = ({ 
+  onPress, 
+  children, 
+  style, 
+  variant = "primary",
+  icon 
+}: {
+  onPress: () => void;
+  children: React.ReactNode;
+  style?: any;
+  variant?: "primary" | "secondary" | "ghost";
+  icon?: string;
+}) => {
+  const buttonStyles = [
+    styles.modernButton,
+    variant === "primary" && styles.primaryButton,
+    variant === "secondary" && styles.secondaryButton,
+    variant === "ghost" && styles.ghostButton,
+    style,
+  ];
+
+  const textStyles = [
+    styles.buttonText,
+    variant === "primary" && styles.primaryButtonText,
+    variant === "secondary" && styles.secondaryButtonText,
+    variant === "ghost" && styles.ghostButtonText,
+  ];
+
+  return (
+    <TouchableOpacity style={buttonStyles} onPress={onPress} activeOpacity={0.8}>
+      <View style={styles.buttonContent}>
+        {icon && (
+          <Ionicons 
+            name={icon as any} 
+            size={20} 
+            color={
+              variant === "primary" ? "#FFFFFF" :
+              variant === "secondary" ? "#6366F1" : "#6B7280"
+            }
+            style={styles.buttonIcon}
+          />
+        )}
+        <Text style={textStyles}>{children}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export default function HomeScreen() {
   const imageRef = useRef<View>(null);
@@ -39,14 +88,12 @@ export default function HomeScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [stickers, setStickers] = useState<StickerData[]>([]);
 
-  // Request permissions on mount
   React.useEffect(() => {
     if (status === null) {
       requestPermission();
     }
   }, [status, requestPermission]);
 
-  // Pick image from gallery with better error handling
   const pickImageAsync = useCallback(async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -54,7 +101,7 @@ export default function HomeScreen() {
         quality: 1,
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
-      
+
       if (!result.canceled && result.assets[0]) {
         setSelectedImage(result.assets[0].uri);
         setShowAppOptions(true);
@@ -67,7 +114,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Reset all state
   const onReset = useCallback(() => {
     setShowAppOptions(false);
     setSelectedImage(null);
@@ -82,7 +128,6 @@ export default function HomeScreen() {
     setIsModalVisible(false);
   }, []);
 
-  // Add sticker with unique ID for better management
   const onEmojiSelect = useCallback((emoji: string) => {
     const newSticker: StickerData = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -90,12 +135,11 @@ export default function HomeScreen() {
       pan: new Animated.ValueXY({ x: 0, y: 0 }),
       scale: new Animated.Value(1),
     };
-    
+
     setStickers(prev => [...prev, newSticker]);
     setIsModalVisible(false);
   }, []);
 
-  // Save image to device storage with better error handling
   const onSaveImageAsync = useCallback(async () => {
     if (Platform.OS === "web") {
       Alert.alert("Not supported", "Saving is not supported on web.");
@@ -113,7 +157,7 @@ export default function HomeScreen() {
         quality: 1,
         format: 'png',
       });
-      
+
       await MediaLibrary.saveToLibraryAsync(localUri);
       Alert.alert("Success", "Image saved to gallery!");
     } catch (error) {
@@ -122,7 +166,6 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Create gesture handlers for each sticker
   const createStickerGestureHandlers = useCallback((sticker: StickerData) => {
     const onPanGestureEvent = Animated.event(
       [
@@ -166,10 +209,9 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Render individual sticker component
   const renderSticker = useCallback((sticker: StickerData, index: number) => {
     const handlers = createStickerGestureHandlers(sticker);
-    
+
     return (
       <PinchGestureHandler
         key={sticker.id}
@@ -185,8 +227,8 @@ export default function HomeScreen() {
               style={[
                 styles.sticker,
                 {
-                  bottom: 20 + (index * 10), // Offset multiple stickers
-                  right: 20 + (index * 10),
+                  bottom: 20 + index * 10,
+                  right: 20 + index * 10,
                   transform: [
                     ...sticker.pan.getTranslateTransform(),
                     { scale: sticker.scale },
@@ -208,37 +250,77 @@ export default function HomeScreen() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <View style={styles.imageContainer}>
-        <View ref={imageRef} collapsable={false}>
-          <ImageViewer selectedImage={selectedImage} />
-          {stickers.map((sticker, index) => renderSticker(sticker, index))}
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Photo Studio</Text>
+        <Text style={styles.headerSubtitle}>Add stickers to your photos</Text>
       </View>
 
-      {showAppOptions ? (
-        <View style={styles.optionsContainer}>
-          <View style={styles.optionsRow}>
-            <Button label="Reset" onPress={onReset} />
-            <CircleButton onPress={onAddSticker} />
-            <Button label="Save" onPress={onSaveImageAsync} />
+      {/* Main Content */}
+      <View style={styles.mainContent}>
+        <View style={styles.imageContainer}>
+          <View ref={imageRef} collapsable={false} style={styles.imageWrapper}>
+            <ImageViewer selectedImage={selectedImage} />
+            {stickers.map((sticker, index) => renderSticker(sticker, index))}
           </View>
         </View>
-      ) : (
-        <View style={styles.footerContainer}>
-          <Button label="Choose a photo" onPress={pickImageAsync} />
-          <Button
-            label="Use this photo"
-            onPress={() => setShowAppOptions(true)}
-          />
-        </View>
-      )}
+
+        {/* Action Buttons */}
+        {showAppOptions ? (
+          <View style={styles.actionsContainer}>
+            <ModernButton 
+              onPress={onAddSticker} 
+              variant="primary"
+              icon="happy-outline"
+              style={styles.primaryAction}
+            >
+              Add Sticker
+            </ModernButton>
+            
+            <View style={styles.secondaryActions}>
+              <ModernButton 
+                onPress={onReset} 
+                variant="ghost"
+                icon="refresh-outline"
+                style={styles.secondaryAction}
+              >
+                Reset
+              </ModernButton>
+              <ModernButton 
+                onPress={onSaveImageAsync} 
+                variant="secondary"
+                icon="download-outline"
+                style={styles.secondaryAction}
+              >
+                Save
+              </ModernButton>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.welcomeContainer}>
+            <View style={styles.welcomeContent}>
+              <Ionicons name="images-outline" size={48} color="#9CA3AF" style={styles.welcomeIcon} />
+              <Text style={styles.welcomeTitle}>Choose Your Photo</Text>
+              <Text style={styles.welcomeText}>Select a photo from your gallery to get started</Text>
+              <ModernButton 
+                onPress={pickImageAsync} 
+                variant="primary"
+                icon="camera-outline"
+                style={styles.choosePhotoButton}
+              >
+                Choose Photo
+              </ModernButton>
+            </View>
+          </View>
+        )}
+      </View>
 
       <EmojiPicker
         isVisible={isModalVisible}
         onClose={onModalClose}
         onSelect={onEmojiSelect}
       />
-      <StatusBar style="auto" />
+      <StatusBar style="dark" />
     </GestureHandlerRootView>
   );
 }
@@ -246,29 +328,163 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#7FCFF7",
-    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+  },
+  header: {
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: "#64748B",
+    fontWeight: "400",
+  },
+  mainContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   imageContainer: {
     flex: 1,
-    paddingTop: 58,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  image: {
-    width: 320,
-    height: 440,
-    borderRadius: 18,
+  imageWrapper: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#F8FAFC",
   },
-  footerContainer: {
-    flex: 1 / 3,
+  welcomeContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 32,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  welcomeContent: {
     alignItems: "center",
   },
-  optionsContainer: {
-    position: "absolute",
-    bottom: 80,
+  welcomeIcon: {
+    marginBottom: 16,
   },
-  optionsRow: {
-    alignItems: "center",
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: "#64748B",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  choosePhotoButton: {
+    minWidth: 180,
+  },
+  actionsContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  primaryAction: {
+    marginBottom: 16,
+  },
+  secondaryActions: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  secondaryAction: {
+    flex: 1,
+  },
+  modernButton: {
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 52,
+  },
+  primaryButton: {
+    backgroundColor: "#6366F1",
+    shadowColor: "#6366F1",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  secondaryButton: {
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  ghostButton: {
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonIcon: {
+    marginRight: 8,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+  },
+  secondaryButtonText: {
+    color: "#6366F1",
+  },
+  ghostButtonText: {
+    color: "#6B7280",
   },
   sticker: {
     position: "absolute",
