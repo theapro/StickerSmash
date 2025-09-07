@@ -1,14 +1,14 @@
-import React from 'react';
-import { FlatList, Image, Pressable, StyleSheet } from 'react-native';
+import React from "react";
+import { FlatList, Image, Pressable, StyleSheet } from "react-native";
 
 interface EmojiListProps {
   onSelect: (emoji: string) => void;
 }
 
 const emojis = [
-  require('../assets/stickers/heart.png'),
-  require('../assets/stickers/star.png'),
-  require('../assets/stickers/unicorn.png'),
+  require("../assets/stickers/heart.png"),
+  require("../assets/stickers/star.png"),
+  require("../assets/stickers/unicorn.png"),
 ];
 
 export default function EmojiList({ onSelect }: EmojiListProps) {
@@ -17,24 +17,38 @@ export default function EmojiList({ onSelect }: EmojiListProps) {
       horizontal
       data={emojis}
       renderItem={({ item }) => (
-        <Pressable onPress={() => onSelect(Image.resolveAssetSource(item).uri)}>
+        <Pressable
+          onPress={() => onSelect(Image.resolveAssetSource(item).uri)}
+          style={({ pressed }) => [
+            styles.emojiButton,
+            pressed && styles.emojiButtonPressed,
+          ]}
+        >
           <Image source={item} style={styles.image} />
         </Pressable>
       )}
       keyExtractor={(_, index) => index.toString()}
       contentContainerStyle={styles.list}
+      showsHorizontalScrollIndicator={false}
     />
   );
 }
 
 const styles = StyleSheet.create({
   list: {
-    padding: 10,
-    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  emojiButton: {
+    padding: 8,
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  emojiButtonPressed: {
+    backgroundColor: "#F0F0F0",
   },
   image: {
-    width: 50,
-    height: 50,
-    marginHorizontal: 10,
+    width: 48,
+    height: 48,
   },
 });

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image, StyleSheet } from 'react-native';
+import React from "react";
+import { Image, StyleSheet } from "react-native";
 
 interface ImageViewerProps {
   selectedImage: string | null;
@@ -8,14 +8,16 @@ interface ImageViewerProps {
 export default function ImageViewer({ selectedImage }: ImageViewerProps) {
   const imageSource = selectedImage
     ? { uri: selectedImage }
-    : require('../assets/images/background.png'); // default image
+    : require("../assets/images/background.png"); // default image
   return <Image source={imageSource} style={styles.image} />;
 }
 
 const styles = StyleSheet.create({
   image: {
-    width: 320,
-    height: 440,
-    borderRadius: 18,
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+    resizeMode: "contain",
   },
 });

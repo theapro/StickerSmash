@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons"; // Make sure to install @expo/vector-icons if using icons
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import "../global.css";
 
@@ -20,11 +20,15 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="stickers"
+        name="info"
         options={{
-          title: "Stickers",
+          title: "Info",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="star-outline" color={color} size={size} />
+            <Ionicons
+              name="information-circle-outline"
+              color={color}
+              size={size}
+            />
           ),
         }}
       />

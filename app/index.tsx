@@ -1,43 +1,45 @@
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import { StatusBar } from "expo-status-bar";
-import React, { useRef, useState, useCallback } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   Alert,
   Animated,
   Image,
   Platform,
   StyleSheet,
-  View,
   Text,
   TouchableOpacity,
+  View,
 } from "react-native";
 import {
   GestureHandlerRootView,
   PanGestureHandler,
   PinchGestureHandler,
   State,
+  TapGestureHandler,
 } from "react-native-gesture-handler";
 import { captureRef } from "react-native-view-shot";
-import { Ionicons } from "@expo/vector-icons";
 
-import ImageViewer from "../components/ImageViewer";
 import EmojiPicker from "../components/EmojiPicker";
+import ImageViewer from "../components/ImageViewer";
 
 interface StickerData {
   id: string;
   uri: string;
   pan: Animated.ValueXY;
   scale: Animated.Value;
+  sizeMode: number; // 0 = small, 1 = medium, 2 = large
 }
 
 // Modern Button Component
-const ModernButton = ({ 
-  onPress, 
-  children, 
-  style, 
+const ModernButton = ({
+  onPress,
+  children,
+  style,
   variant = "primary",
-  icon 
+  icon,
 }: {
   onPress: () => void;
   children: React.ReactNode;
@@ -61,15 +63,22 @@ const ModernButton = ({
   ];
 
   return (
-    <TouchableOpacity style={buttonStyles} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={buttonStyles}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <View style={styles.buttonContent}>
         {icon && (
-          <Ionicons 
-            name={icon as any} 
-            size={20} 
+          <Ionicons
+            name={icon as any}
+            size={18}
             color={
-              variant === "primary" ? "#FFFFFF" :
-              variant === "secondary" ? "#6366F1" : "#6B7280"
+              variant === "primary"
+                ? "#FFFFFF"
+                : variant === "secondary"
+                ? "#000000"
+                : "#666666"
             }
             style={styles.buttonIcon}
           />
@@ -134,9 +143,10 @@ export default function HomeScreen() {
       uri: emoji,
       pan: new Animated.ValueXY({ x: 0, y: 0 }),
       scale: new Animated.Value(1),
+      sizeMode: 1, // Start with medium size
     };
 
-    setStickers(prev => [...prev, newSticker]);
+    setStickers((prev) => [...prev, newSticker]);
     setIsModalVisible(false);
   }, []);
 
@@ -155,7 +165,7 @@ export default function HomeScreen() {
       const localUri = await captureRef(imageRef, {
         height: 440,
         quality: 1,
-        format: 'png',
+        format: "png",
       });
 
       await MediaLibrary.saveToLibraryAsync(localUri);
@@ -197,8 +207,23 @@ export default function HomeScreen() {
 
     const onPinchHandlerStateChange = (event: any) => {
       if (event.nativeEvent.oldState === State.ACTIVE) {
-        sticker.scale.setValue(event.nativeEvent.scale);
+        const newScale = Math.max(0.5, Math.min(3, event.nativeEvent.scale));
+        sticker.scale.setValue(newScale);
       }
+    };
+
+    const onDoubleTap = () => {
+      // Cycle through sizes: 0.7 (small), 1.0 (medium), 1.5 (large)
+      const sizes = [0.7, 1.0, 1.5];
+      sticker.sizeMode = (sticker.sizeMode + 1) % sizes.length;
+      const targetSize = sizes[sticker.sizeMode];
+
+      Animated.spring(sticker.scale, {
+        toValue: targetSize,
+        tension: 150,
+        friction: 8,
+        useNativeDriver: false,
+      }).start();
     };
 
     return {
@@ -206,54 +231,65 @@ export default function HomeScreen() {
       onPanHandlerStateChange,
       onPinchGestureEvent,
       onPinchHandlerStateChange,
+      onDoubleTap,
     };
   }, []);
 
-  const renderSticker = useCallback((sticker: StickerData, index: number) => {
-    const handlers = createStickerGestureHandlers(sticker);
+  const renderSticker = useCallback(
+    (sticker: StickerData, index: number) => {
+      const handlers = createStickerGestureHandlers(sticker);
 
-    return (
-      <PinchGestureHandler
-        key={sticker.id}
-        onGestureEvent={handlers.onPinchGestureEvent}
-        onHandlerStateChange={handlers.onPinchHandlerStateChange}
-      >
-        <Animated.View style={{ flex: 1 }}>
-          <PanGestureHandler
-            onGestureEvent={handlers.onPanGestureEvent}
-            onHandlerStateChange={handlers.onPanHandlerStateChange}
-          >
-            <Animated.View
-              style={[
-                styles.sticker,
-                {
-                  bottom: 20 + index * 10,
-                  right: 20 + index * 10,
-                  transform: [
-                    ...sticker.pan.getTranslateTransform(),
-                    { scale: sticker.scale },
-                  ],
-                },
-              ]}
+      return (
+        <PinchGestureHandler
+          key={sticker.id}
+          onGestureEvent={handlers.onPinchGestureEvent}
+          onHandlerStateChange={handlers.onPinchHandlerStateChange}
+        >
+          <Animated.View style={{ flex: 1 }}>
+            <PanGestureHandler
+              onGestureEvent={handlers.onPanGestureEvent}
+              onHandlerStateChange={handlers.onPanHandlerStateChange}
             >
-              <Image
-                source={{ uri: sticker.uri }}
-                style={styles.stickerImage}
-                resizeMode="contain"
-              />
-            </Animated.View>
-          </PanGestureHandler>
-        </Animated.View>
-      </PinchGestureHandler>
-    );
-  }, [createStickerGestureHandlers]);
+              <Animated.View style={{ flex: 1 }}>
+                <TapGestureHandler
+                  numberOfTaps={2}
+                  onActivated={handlers.onDoubleTap}
+                >
+                  <Animated.View
+                    style={[
+                      styles.sticker,
+                      {
+                        bottom: 20 + index * 10,
+                        right: 20 + index * 10,
+                        transform: [
+                          ...sticker.pan.getTranslateTransform(),
+                          { scale: sticker.scale },
+                        ],
+                      },
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: sticker.uri }}
+                      style={styles.stickerImage}
+                      resizeMode="contain"
+                    />
+                  </Animated.View>
+                </TapGestureHandler>
+              </Animated.View>
+            </PanGestureHandler>
+          </Animated.View>
+        </PinchGestureHandler>
+      );
+    },
+    [createStickerGestureHandlers]
+  );
 
   return (
     <GestureHandlerRootView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Photo Studio</Text>
-        <Text style={styles.headerSubtitle}>Add stickers to your photos</Text>
+        <Text style={styles.headerTitle}>StickerSmash</Text>
+        <Text style={styles.headerSubtitle}>Transform your photos</Text>
       </View>
 
       {/* Main Content */}
@@ -268,26 +304,26 @@ export default function HomeScreen() {
         {/* Action Buttons */}
         {showAppOptions ? (
           <View style={styles.actionsContainer}>
-            <ModernButton 
-              onPress={onAddSticker} 
+            <ModernButton
+              onPress={onAddSticker}
               variant="primary"
               icon="happy-outline"
               style={styles.primaryAction}
             >
               Add Sticker
             </ModernButton>
-            
+
             <View style={styles.secondaryActions}>
-              <ModernButton 
-                onPress={onReset} 
+              <ModernButton
+                onPress={onReset}
                 variant="ghost"
                 icon="refresh-outline"
                 style={styles.secondaryAction}
               >
                 Reset
               </ModernButton>
-              <ModernButton 
-                onPress={onSaveImageAsync} 
+              <ModernButton
+                onPress={onSaveImageAsync}
                 variant="secondary"
                 icon="download-outline"
                 style={styles.secondaryAction}
@@ -299,11 +335,18 @@ export default function HomeScreen() {
         ) : (
           <View style={styles.welcomeContainer}>
             <View style={styles.welcomeContent}>
-              <Ionicons name="images-outline" size={48} color="#9CA3AF" style={styles.welcomeIcon} />
+              <Ionicons
+                name="images-outline"
+                size={40}
+                color="#CCCCCC"
+                style={styles.welcomeIcon}
+              />
               <Text style={styles.welcomeTitle}>Choose Your Photo</Text>
-              <Text style={styles.welcomeText}>Select a photo from your gallery to get started</Text>
-              <ModernButton 
-                onPress={pickImageAsync} 
+              <Text style={styles.welcomeText}>
+                Select a photo from your gallery to get started
+              </Text>
+              <ModernButton
+                onPress={pickImageAsync}
                 variant="primary"
                 icon="camera-outline"
                 style={styles.choosePhotoButton}
@@ -328,104 +371,82 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
   },
   header: {
     paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingBottom: 20,
+    paddingBottom: 32,
     paddingHorizontal: 24,
     backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1E293B",
+    fontSize: 32,
+    fontWeight: "300",
+    color: "#000000",
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: "#64748B",
+    color: "#666666",
     fontWeight: "400",
   },
   mainContent: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   imageContainer: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
   },
   imageWrapper: {
     flex: 1,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
   },
   welcomeContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 32,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 16,
+    padding: 40,
   },
   welcomeContent: {
     alignItems: "center",
   },
   welcomeIcon: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   welcomeTitle: {
     fontSize: 24,
-    fontWeight: "600",
-    color: "#1E293B",
+    fontWeight: "300",
+    color: "#000000",
     marginBottom: 8,
     textAlign: "center",
+    letterSpacing: -0.3,
   },
   welcomeText: {
     fontSize: 16,
-    color: "#64748B",
+    color: "#666666",
     textAlign: "center",
-    marginBottom: 24,
-    lineHeight: 24,
+    marginBottom: 32,
+    lineHeight: 22,
   },
   choosePhotoButton: {
-    minWidth: 180,
+    minWidth: 160,
   },
   actionsContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    backgroundColor: "#FAFAFA",
+    borderRadius: 16,
     padding: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
   },
   primaryAction: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   secondaryActions: {
     flexDirection: "row",
@@ -436,33 +457,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modernButton: {
-    borderRadius: 12,
+    borderRadius: 8,
     paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 52,
+    minHeight: 48,
   },
   primaryButton: {
-    backgroundColor: "#6366F1",
-    shadowColor: "#6366F1",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    backgroundColor: "#000000",
   },
   secondaryButton: {
-    backgroundColor: "#F1F5F9",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    backgroundColor: "#F0F0F0",
   },
   ghostButton: {
     backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
+    borderColor: "#E0E0E0",
   },
   buttonContent: {
     flexDirection: "row",
@@ -473,18 +484,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 15,
+    fontWeight: "500",
     textAlign: "center",
   },
   primaryButtonText: {
     color: "#FFFFFF",
   },
   secondaryButtonText: {
-    color: "#6366F1",
+    color: "#000000",
   },
   ghostButtonText: {
-    color: "#6B7280",
+    color: "#666666",
   },
   sticker: {
     position: "absolute",
